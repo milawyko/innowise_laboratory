@@ -1,93 +1,158 @@
-students = []
+from typing import List, Dict, Optional
 
-def student_exists(names):
-    for student in students:
-        if student["name"].lower() == names.lower():
-            return True
-    return False
+students: List[Dict[str, str or List[int]]] = []
 
-while True:
-    print("--- Student Grade Analyzer ---")
-    menu_options = ["Add a new student", "Add grades for a student",
-                    "Generates a full report", "Find the top performer", "Exit program"]
-    for i, option in enumerate(menu_options, start = 1):
-        print (f"{i}. {option}")
-    choice_input = input("Enter your choice: ")
+
+def student_exists(student_name: str) -> bool:
+    return any(student["name"].lower() == student_name.lower() for student in students)
+
+
+def find_student(student_name: str) -> Optional[Dict]:
+    return next((s for s in students if s["name"].lower() == student_name.lower()), None)
+
+
+def calculate_average(grades: List[int]) -> Optional[float]:
+    return sum(grades) / len(grades) if grades else None
+
+
+def get_valid_grade() -> Optional[int]:
+    grade_input = input("Enter a grade (or 'done' to finish): ")
+    if grade_input.lower() == 'done':
+        return None
+
     try:
-        choice_num = int(choice_input)
-        if choice_num < 1 or choice_num > 5:
-            print("Error: number must be 1-5")
-            continue
+        grade = int(grade_input)
+        return grade if 0 <= grade <= 100 else None
     except ValueError:
         print("Invalid input. Please enter a number")
-        continue
+        return None
 
-    if choice_num == 1:
-        new_users_name = (input("Enter student name: ")).strip().title()
-        if student_exists(new_users_name):
-            print(f"Error: Student '{new_users_name}' already exists")
+
+def add_new_student() -> None:
+    new_student_name = input("Enter student name: ").strip().title()
+
+    if student_exists(new_student_name):
+        print(f"Error: Student '{new_student_name}' already exists")
+        return
+
+    students.append({"name": new_student_name, "grades": []})
+    print(f"Student '{new_student_name}' added successfully")
+
+
+def add_grades_to_student() -> None:
+    student_name = input("Enter student name: ").strip().title()
+    student = find_student(student_name)
+
+    if not student:
+        print("Error: student not found")
+        return
+
+    while True:
+        grade = get_valid_grade()
+        if grade is None:  # User entered 'done'
+            break
+        student["grades"].append(grade)
+        print(f"Grade {grade} added successfully")
+
+
+def generate_report() -> None:
+    """Generate comprehensive student report."""
+    if not students:
+        print('No students are available')
+        return
+
+    averages = []
+    print("--- Student Report ---")
+
+    # используем map для вычисления средних
+    student_averages = list(map(lambda s: calculate_average(s["grades"]), students))
+
+    for student, avg in zip(students, student_averages):
+        name = student["name"]
+        if avg is not None:
+            print(f"{name}'s average grade is {avg:.1f}")
+            averages.append(avg)
         else:
-            new_student = {"name":new_users_name, "grades":[]}
-            students.append(new_student)
+            print(f"{name}'s average grade is N/A")
 
-    elif choice_num == 2:
-        student_name = input("Enter student name: ")
-        if student_exists(student_name):
-            for student in students:
-                if student["name"].lower() == student_name.lower():
-                    while True:
-                        student_grade_input = input("Enter a grade (or 'done' to finish): ")
-                        if student_grade_input.lower() == 'done':
-                            break
-                        else:
-                            try:
-                                student_grade = int(student_grade_input)
-                                if student_grade < 0 or student_grade > 100:
-                                    print("Error: number must be 0-100")
-                                    continue
-                                student["grades"].append(student_grade)
-                            except ValueError:
-                                print("Invalid input. Please enter a number")
-        else:
-            print("Error: student not found")
+    if averages:
+        max_avg = max(averages)
+        min_avg = min(averages)
+        overall_avg = sum(averages) / len(averages)
+
+        print("---------------------")
+        print(f"Max Average: {max_avg:.1f}")
+        print(f"Min Average: {min_avg:.1f}")
+        print(f"Overall Average: {overall_avg:.1f}")
+
+
+def find_top_performer() -> None:
+    if not students:
+        print("No students are available")
+        return
+
+    students_with_grades = list(filter(lambda s: s["grades"], students))
+
+    if not students_with_grades:
+        print("No students with grades available.")
+        return
+
+    top_student = max(students_with_grades, key=lambda s: calculate_average(s["grades"]))
+    top_average = calculate_average(top_student["grades"])
+
+    print(f"The student with the highest average is {top_student['name']} "
+          f"with a grade of {top_average:.1f}.")
+
+
+def get_menu_choice() -> int:
+    """Get and validate menu choice from user."""
+    while True:
+        choice_input = input("Enter your choice: ")
+        try:
+            choice_num = int(choice_input)
+            return choice_num if 1 <= choice_num <= 5 else None
+        except ValueError:
+            print("Invalid input. Please enter a number")
+            return None
+
+
+def display_menu() -> None:
+    """Display main menu options."""
+    print("--- Student Grade Analyzer ---")
+    menu_options = [
+        "Add a new student",
+        "Add grades for a student",
+        "Generate a full report",
+        "Find the top performer",
+        "Exit program"
+    ]
+
+    for i, option in enumerate(menu_options, start=1):
+        print(f"{i}. {option}")
+
+
+def main() -> None:
+    """Main program loop with menu interface."""
+    while True:
+        display_menu()
+        choice_num = get_menu_choice()
+
+        if choice_num is None:
             continue
 
-    elif choice_num == 3:
-        if not students:
-            print('No students are available')
-            continue
-        averages = []
-        print("--- Student Report ---")
-        for student in students:
-            name = student["name"]
-            grades = student["grades"]
+        menu_actions = {
+            1: add_new_student,
+            2: add_grades_to_student,
+            3: generate_report,
+            4: find_top_performer
+        }
 
-            try:
-                average = sum(grades) / len(grades)
-                print(f"{name}'s average grade is {average:.1f}")
-                averages.append(average)
-            except ZeroDivisionError:
-                print(f"{name}'s average grade is N/A")
-        if averages:
-            max_average = max(averages)
-            min_average = min(averages)
-            overall_average = sum(averages)/len(averages)
-            print("---------------------")
-            print(f"Max Average: {max_average:.1f}")
-            print(f"Min Average: {min_average:.1f}")
-            print(f"Overall Average: {overall_average:.1f}")
+        if choice_num == 5:
+            break
 
-    elif choice_num == 4:
-        if not students:
-            print("No students are available")
-            continue
-        students_with_grades = [s for s in students if s["grades"]]
-        if not students_with_grades:
-            print("No students with grades available.")
-            continue
-        top_student = max(students_with_grades, key=lambda student: sum(student["grades"]) / len(student["grades"]))
-        top_average = sum(top_student["grades"]) / len(top_student["grades"])
-        print(f"The student with the highest average rate is {top_student["name"]} with a grade of {top_average:.1f}.")
+        if choice_num in menu_actions:
+            menu_actions[choice_num]()
 
-    elif choice_num == 5:
-        break
+
+if __name__ == "__main__":
+    main()
